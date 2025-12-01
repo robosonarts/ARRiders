@@ -82,21 +82,43 @@
     const startButton = document.getElementById('start-button');
     const startScreen = document.getElementById('start-screen');
     const video = document.getElementById('riders-video');
+    const scene = document.querySelector('a-scene');
+
+    // Get the MindAR component (the magic object that controls the camera)
+    const mindarComponent = scene.components['mindar-image'];
 
     startButton.addEventListener('click', () => {
+      // 1. Hide the overlay immediately
       startScreen.style.display = 'none';
-      video.play(); 
-      video.muted = false; 
+
+      // 2. IMPORTANT: Explicitly start MindAR/Camera stream
+      if (mindarComponent) {
+        // This is the function that forces camera stream access
+        mindarComponent.start().then(() => {
+          console.log("MindAR stream started successfully.");
+          // Only attempt to play the video AFTER the camera stream is initialized
+          video.play(); 
+          video.muted = false; 
+        }).catch(err => {
+          // Log any camera permission errors that the browser might suppress
+          console.error("Failed to start MindAR stream:", err);
+          alert("Error starting camera. Check browser permissions or try another browser.");
+        });
+      } else {
+        console.error("MindAR component not found on the scene.");
+      }
     });
 
+    // ... (Keep the rest of your targetFound/targetLost listeners below this)
     const target = document.querySelector('[mindar-image-target]');
+    
     target.addEventListener('targetFound', () => {
+      console.log("Painting found!");
       video.play();
     });
-
+    
     target.addEventListener('targetLost', () => {
-      video.pause();
+      console.log("Painting lost.");
+      video.pause(); 
     });
   </script>
-</body>
-</html>
