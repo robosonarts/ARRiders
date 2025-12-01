@@ -3,14 +3,15 @@
 <head>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Riders AR Experience</title>
-
+  
   <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
   
   <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
 
   <style>
     body { margin: 0; overflow: hidden; }
-
+    
+    /* The "Start" Overlay */
     #start-screen {
       position: absolute;
       top: 0; left: 0; width: 100%; height: 100%;
@@ -24,7 +25,7 @@
       font-family: sans-serif;
       text-align: center;
     }
-
+    
     #start-button {
       padding: 15px 30px;
       font-size: 20px;
@@ -47,7 +48,11 @@
   </div>
 
   <a-scene 
-    mindar-image="imageTargetSrc: ./riders.mind; uiLoading: no; uiScanning: no;" 
+    mindar-image="imageTargetSrc: ./riders.mind; 
+                 uiLoading: no; 
+                 uiScanning: no;
+                 cameraNear: 0.1;
+                 maxCanvasSize: 640;" 
     color-space="sRGB" 
     renderer="antialias: true, logarithmicDepthBuffer: true, colorManagement: true, physicallyCorrectLights: true" 
     vr-mode-ui="enabled: false" 
@@ -71,7 +76,7 @@
     <a-entity mindar-image-target="targetIndex: 0">
       <a-video src="#riders-video" 
                position="0 0 0" 
-               height="1" 
+               height="0.73" 
                width="1" 
                rotation="0 0 0">
       </a-video>
@@ -84,41 +89,38 @@
     const video = document.getElementById('riders-video');
     const scene = document.querySelector('a-scene');
 
-    // Get the MindAR component (the magic object that controls the camera)
+    // Get the MindAR component (used to explicitly start the camera)
     const mindarComponent = scene.components['mindar-image'];
 
     startButton.addEventListener('click', () => {
-      // 1. Hide the overlay immediately
+      // 1. Hide the overlay
       startScreen.style.display = 'none';
 
-      // 2. IMPORTANT: Explicitly start MindAR/Camera stream
-      if (mindarComponent) {
-        // This is the function that forces camera stream access
+      // 2. CRUCIAL: Explicitly start MindAR/Camera stream (This is the iOS fix)
+      if (mindarComponent && mindarComponent.start) {
         mindarComponent.start().then(() => {
           console.log("MindAR stream started successfully.");
-          // Only attempt to play the video AFTER the camera stream is initialized
+          // Play video only AFTER the camera stream is initialized
           video.play(); 
           video.muted = false; 
         }).catch(err => {
-          // Log any camera permission errors that the browser might suppress
           console.error("Failed to start MindAR stream:", err);
-          alert("Error starting camera. Check browser permissions or try another browser.");
+          alert("Error starting camera. The issue is likely browser permissions. Please try clearing your history/cache or using Chrome.");
         });
       } else {
-        console.error("MindAR component not found on the scene.");
+        console.error("MindAR component not found or start function missing.");
       }
     });
 
-    // ... (Keep the rest of your targetFound/targetLost listeners below this)
     const target = document.querySelector('[mindar-image-target]');
     
     target.addEventListener('targetFound', () => {
-      console.log("Painting found!");
       video.play();
     });
     
     target.addEventListener('targetLost', () => {
-      console.log("Painting lost.");
-      video.pause(); 
+      video.pause();
     });
   </script>
+</body>
+</html>
