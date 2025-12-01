@@ -51,8 +51,9 @@
     mindar-image="imageTargetSrc: ./riders.mind; 
                  uiLoading: no; 
                  uiScanning: no;
-                 cameraNear: 0.1;
-                 maxCanvasSize: 640;" 
+                 cameraNear: 0.1; 
+                 maxCanvasSize: 640;
+                 facingMode: environment;" 
     color-space="sRGB" 
     renderer="antialias: true, logarithmicDepthBuffer: true, colorManagement: true, physicallyCorrectLights: true" 
     vr-mode-ui="enabled: false" 
@@ -88,32 +89,35 @@
     const startScreen = document.getElementById('start-screen');
     const video = document.getElementById('riders-video');
     const scene = document.querySelector('a-scene');
-
-    // Get the MindAR component (used to explicitly start the camera)
     const mindarComponent = scene.components['mindar-image'];
 
-    startButton.addEventListener('click', () => {
-      // 1. Hide the overlay
+    startButton.addEventListener('click', async () => { // ADD 'async' HERE
       startScreen.style.display = 'none';
 
-      // 2. CRUCIAL: Explicitly start MindAR/Camera stream (This is the iOS fix)
-      if (mindarComponent && mindarComponent.start) {
-        mindarComponent.start().then(() => {
-          console.log("MindAR stream started successfully.");
-          // Play video only AFTER the camera stream is initialized
-          video.play(); 
-          video.muted = false; 
-        }).catch(err => {
-          console.error("Failed to start MindAR stream:", err);
-          alert("Error starting camera. The issue is likely browser permissions. Please try clearing your history/cache or using Chrome.");
-        });
-      } else {
-        console.error("MindAR component not found or start function missing.");
+      try {
+        // --- 1. NATIVE iOS/SAFARI CAMERA WAKEUP ---
+        // Request the raw camera stream first (This often triggers the prompt)
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+        // Stop the stream immediately, as MindAR will restart it later
+        stream.getTracks().forEach(track => track.stop()); 
+
+        // 2. EXPLICIT MINDAR START
+        if (mindarComponent && mindarComponent.start) {
+            await mindarComponent.start(); // Changed to await here
+            console.log("MindAR stream started successfully.");
+            video.play(); 
+            video.muted = false; 
+        }
+
+      } catch (err) {
+        console.error("Camera Initialization Failed:", err);
+        // Alert the user if the final attempt fails
+        alert("Camera Error. Please check Safari Settings > Camera Access and ensure it is 'Allow'.");
       }
     });
-
-    const target = document.querySelector('[mindar-image-target]');
     
+    // ... (rest of your event listeners below)
+    const target = document.querySelector('[mindar-image-target]');
     target.addEventListener('targetFound', () => {
       video.play();
     });
